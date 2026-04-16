@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Investment Growth Calculator</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --bg: #07111f;
+      --panel: #0d1c31;
+      --panel-2: #132742;
+      --border: rgba(146, 185, 255, 0.18);
+      --primary: #4aa3ff;
+      --primary-2: #7cc4ff;
+      --accent: #16c0ff;
+      --text: #eaf3ff;
+      --muted: #a8bdd8;
+      --success: #4de0a8;
+      --shadow: 0 18px 50px rgba(0, 0, 0, 0.32);
+      --radius: 22px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(74, 163, 255, 0.18), transparent 28%),
+        radial-gradient(circle at bottom right, rgba(22, 192, 255, 0.12), transparent 30%),
+        linear-gradient(180deg, #07111f 0%, #0a1527 100%);
+      color: var(--text);
+      min-height: 100%;
+    }
+
+    body {
+      padding: 20px;
+    }
+
+    .calculator-shell {
+      width: 100%;
+      max-width: 1180px;
+      margin: 0 auto;
+      background: linear-gradient(180deg, rgba(13, 28, 49, 0.96), rgba(9, 20, 36, 0.98));
+      border: 1px solid var(--border);
+      border-radius: 28px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .header {
+      padding: 28px 28px 18px;
+      border-bottom: 1px solid var(--border);
+      background: linear-gradient(180deg, rgba(19, 39, 66, 0.82), rgba(13, 28, 49, 0.15));
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 12px;
+      border-radius: 999px;
+      background: rgba(74, 163, 255, 0.12);
+      color: var(--primary-2);
+      font-size: 0.82rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 14px 0 8px;
+      font-size: clamp(1.9rem, 4vw, 2.8rem);
+      line-height: 1.08;
+    }
+
+    .subcopy {
+      margin: 0;
+      max-width: 72ch;
+      color: var(--muted);
+      line-height: 1.6;
+      font-size: 1rem;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(320px, 420px) minmax(0, 1fr);
+      gap: 0;
+    }
+
+    .controls,
+    .results {
+      padding: 24px 28px 28px;
+    }
+
+    .controls {
+      border-right: 1px solid var(--border);
+      background: linear-gradient(180deg, rgba(10, 23, 40, 0.7), rgba(13, 28, 49, 0.2));
+    }
+
+    .section-title {
+      margin: 0 0 8px;
+      font-size: 1.1rem;
+    }
+
+    .section-copy {
+      margin: 0 0 20px;
+      color: var(--muted);
+      font-size: 0.95rem;
+      line-height: 1.55;
+    }
+
+    .preset-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-bottom: 22px;
+    }
+
+    .preset-btn {
+      border: 1px solid var(--border);
+      background: rgba(19, 39, 66, 0.88);
+      color: var(--text);
+      border-radius: 16px;
+      padding: 12px 10px;
+      text-align: left;
+      cursor: pointer;
+      transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+      min-height: 76px;
+      touch-action: manipulation;
+    }
+
+    .preset-btn:hover,
+    .preset-btn:focus-visible {
+      transform: translateY(-1px);
+      border-color: rgba(124, 196, 255, 0.55);
+      outline: none;
+    }
+
+    .preset-btn.active {
+      background: linear-gradient(180deg, rgba(74, 163, 255, 0.24), rgba(22, 192, 255, 0.12));
+      border-color: rgba(124, 196, 255, 0.8);
+      box-shadow: inset 0 0 0 1px rgba(124, 196, 255, 0.25);
+    }
+
+    .preset-label {
+      display: block;
+      font-size: 0.92rem;
+      font-weight: 700;
+      margin-bottom: 5px;
+    }
+
+    .preset-value {
+      display: block;
+      color: var(--muted);
+      font-size: 0.84rem;
+    }
+
+    .control-group {
+      margin-bottom: 18px;
+      padding: 16px;
+      border-radius: 18px;
+      background: rgba(19, 39, 66, 0.44);
+      border: 1px solid rgba(146, 185, 255, 0.1);
+    }
+
+    .control-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .control-top label {
+      font-weight: 600;
+      font-size: 0.98rem;
+    }
+
+    .number-input {
+      width: 132px;
+      background: rgba(7, 17, 31, 0.9);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px 12px;
+      font-size: 0.98rem;
+      text-align: right;
+    }
+
+    .slider {
+      width: 100%;
+      appearance: none;
+      -webkit-appearance: none;
+      height: 10px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, rgba(74, 163, 255, 0.95), rgba(22, 192, 255, 0.95));
+      outline: none;
+      touch-action: pan-y;
+    }
+
+    .slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: #f7fbff;
+      border: 4px solid #1589df;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.28);
+      cursor: pointer;
+    }
+
+    .slider::-moz-range-thumb {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: #f7fbff;
+      border: 4px solid #1589df;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.28);
+      cursor: pointer;
+    }
+
+    .range-labels {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 0.82rem;
+    }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+      margin-bottom: 20px;
+    }
+
+    .summary-card {
+      padding: 18px;
+      border-radius: 20px;
+      background: linear-gradient(180deg, rgba(19, 39, 66, 0.8), rgba(10, 23, 40, 0.92));
+      border: 1px solid var(--border);
+      min-height: 112px;
+    }
+
+    .summary-label {
+      display: block;
+      color: var(--muted);
+      font-size: 0.86rem;
+      margin-bottom: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .summary-value {
+      font-size: clamp(1.25rem, 2.3vw, 1.9rem);
+      font-weight: 800;
+      line-height: 1.15;
+    }
+
+    .summary-card.highlight .summary-value {
+      color: var(--success);
+    }
+
+    .chart-card {
+      padding: 18px 18px 10px;
+      border-radius: 22px;
+      background: linear-gradient(180deg, rgba(19, 39, 66, 0.74), rgba(9, 20, 36, 0.94));
+      border: 1px solid var(--border);
+    }
+
+    .chart-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 14px;
+    }
+
+    .chart-title {
+      margin: 0;
+      font-size: 1.05rem;
+    }
+
+    .chart-caption {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .chart-wrap {
+      position: relative;
+      min-height: 360px;
+    }
+
+    .formula-note {
+      margin-top: 18px;
+      padding: 14px 16px;
+      border-radius: 18px;
+      background: rgba(7, 17, 31, 0.6);
+      border: 1px solid rgba(146, 185, 255, 0.08);
+      color: var(--muted);
+      font-size: 0.9rem;
+      line-height: 1.55;
+    }
+
+    .formula-note strong {
+      color: var(--text);
+    }
+
+    @media (max-width: 960px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+
+      .controls {
+        border-right: 0;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .summary-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 640px) {
+      body {
+        padding: 12px;
+      }
+
+      .header,
+      .controls,
+      .results {
+        padding-left: 18px;
+        padding-right: 18px;
+      }
+
+      .preset-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .control-top {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .number-input {
+        width: 100%;
+        text-align: left;
+      }
+
+      .chart-wrap {
+        min-height: 300px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="calculator-shell">
+    <div class="header">
+      <div class="eyebrow">Investment Planning Tool</div>
+      <h1>See how your money could grow over time</h1>
+      <p class="subcopy">
+        Compare a conservative bank-style return against a stock market average, or set your own custom rate.
+        Adjust the sliders or type directly into the fields to model your long-term investing plan.
+      </p>
+    </div>
+
+    <div class="layout">
+      <section class="controls" aria-label="Calculator controls">
+        <h2 class="section-title">Quick Select</h2>
+        <p class="section-copy">Choose a return profile to compare, then fine-tune the numbers below.</p>
+
+        <div class="preset-grid" role="group" aria-label="Rate presets">
+          <button type="button" class="preset-btn active" data-rate="3.75" data-mode="bank">
+            <span class="preset-label">High-Street Bank</span>
+            <span class="preset-value">3.75% conservative benchmark</span>
+          </button>
+          <button type="button" class="preset-btn" data-rate="8" data-mode="market">
+            <span class="preset-label">Stock Market Avg</span>
+            <span class="preset-value">8.00% long-run estimate</span>
+          </button>
+          <button type="button" class="preset-btn" data-mode="custom">
+            <span class="preset-label">Custom Rate</span>
+            <span class="preset-value">Set your own annual return</span>
+          </button>
+        </div>
+
+        <div class="control-group">
+          <div class="control-top">
+            <label for="initialInvestment">Initial Investment (£)</label>
+            <input id="initialInvestmentInput" class="number-input" type="number" min="0" max="100000" step="500" value="10000">
+          </div>
+          <input id="initialInvestment" class="slider" type="range" min="0" max="100000" step="500" value="10000">
+          <div class="range-labels">
+            <span>£0</span>
+            <span>£100,000</span>
+          </div>
+        </div>
+
+        <div class="control-group">
+          <div class="control-top">
+            <label for="monthlyContribution">Monthly Contribution (£)</label>
+            <input id="monthlyContributionInput" class="number-input" type="number" min="0" max="5000" step="50" value="500">
+          </div>
+          <input id="monthlyContribution" class="slider" type="range" min="0" max="5000" step="50" value="500">
+          <div class="range-labels">
+            <span>£0</span>
+            <span>£5,000</span>
+          </div>
+        </div>
+
+        <div class="control-group">
+          <div class="control-top">
+            <label for="investmentPeriod">Investment Period (Years)</label>
+            <input id="investmentPeriodInput" class="number-input" type="number" min="1" max="40" step="1" value="20">
+          </div>
+          <input id="investmentPeriod" class="slider" type="range" min="1" max="40" step="1" value="20">
+          <div class="range-labels">
+            <span>1 year</span>
+            <span>40 years</span>
+          </div>
+        </div>
+
+        <div class="control-group">
+          <div class="control-top">
+            <label for="rateOfReturn">Custom Rate of Return (%)</label>
+            <input id="rateOfReturnInput" class="number-input" type="number" min="0" max="15" step="0.25" value="3.75">
+          </div>
+          <input id="rateOfReturn" class="slider" type="range" min="0" max="15" step="0.25" value="3.75">
+          <div class="range-labels">
+            <span>0%</span>
+            <span>15%</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="results" aria-label="Calculator results">
+        <div class="summary-grid">
+          <div class="summary-card highlight">
+            <span class="summary-label">Total Amount</span>
+            <div id="totalAmount" class="summary-value">£0</div>
+          </div>
+          <div class="summary-card">
+            <span class="summary-label">Total Invested</span>
+            <div id="totalInvested" class="summary-value">£0</div>
+          </div>
+          <div class="summary-card">
+            <span class="summary-label">Total Interest</span>
+            <div id="totalInterest" class="summary-value">£0</div>
+          </div>
+        </div>
+
+        <div class="chart-card">
+          <div class="chart-header">
+            <div>
+              <h2 class="chart-title">Projected Wealth Growth</h2>
+              <p id="chartCaption" class="chart-caption">Using a 3.75% annual rate with monthly compounding.</p>
+            </div>
+          </div>
+          <div class="chart-wrap">
+            <canvas id="growthChart" aria-label="Investment growth chart"></canvas>
+          </div>
+        </div>
+
+        <div class="formula-note">
+          <strong>Calculation method:</strong> This tool uses monthly compounding with the standard future value formula for an initial lump sum plus ongoing monthly contributions. For a 0% rate, it automatically falls back to a simple contribution total to avoid divide-by-zero issues.
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <script>
+    const elements = {
+      initialInvestment: document.getElementById('initialInvestment'),
+      initialInvestmentInput: document.getElementById('initialInvestmentInput'),
+      monthlyContribution: document.getElementById('monthlyContribution'),
+      monthlyContributionInput: document.getElementById('monthlyContributionInput'),
+      investmentPeriod: document.getElementById('investmentPeriod'),
+      investmentPeriodInput: document.getElementById('investmentPeriodInput'),
+      rateOfReturn: document.getElementById('rateOfReturn'),
+      rateOfReturnInput: document.getElementById('rateOfReturnInput'),
+      totalAmount: document.getElementById('totalAmount'),
+      totalInvested: document.getElementById('totalInvested'),
+      totalInterest: document.getElementById('totalInterest'),
+      chartCaption: document.getElementById('chartCaption'),
+      presetButtons: Array.from(document.querySelectorAll('.preset-btn'))
+    };
+
+    const formatter = new Intl.NumberFormat('en-GB', {
+      style: 'currency',
+      currency: 'GBP',
+      maximumFractionDigits: 0
+    });
+
+    let activeMode = 'bank';
+
+    function clamp(value, min, max) {
+      return Math.min(Math.max(value, min), max);
+    }
+
+    function syncPair(slider, input, value) {
+      slider.value = value;
+      input.value = value;
+    }
+
+    function parseValue(element, fallback = 0) {
+      const value = parseFloat(element.value);
+      return Number.isFinite(value) ? value : fallback;
+    }
+
+    function futureValue(principal, monthlyContribution, annualRate, years) {
+      const n = 12;
+      const t = years;
+      const r = annualRate / 100;
+      const periods = n * t;
+
+      if (r === 0) {
+        return principal + (monthlyContribution * periods);
+      }
+
+      const monthlyRate = r / n;
+      const growthFactor = Math.pow(1 + monthlyRate, periods);
+
+      return (principal * growthFactor) +
+        (monthlyContribution * ((growthFactor - 1) / monthlyRate));
+    }
+
+    function buildProjection(principal, monthlyContribution, annualRate, years) {
+      const labels = [];
+      const values = [];
+
+      for (let year = 0; year <= years; year += 1) {
+        labels.push(`Year ${year}`);
+        values.push(futureValue(principal, monthlyContribution, annualRate, year));
+      }
+
+      return { labels, values };
+    }
+
+    const chart = new Chart(document.getElementById('growthChart'), {
+      type: 'line',
+      data: {
+        labels: [],
+        datasets: [{
+          label: 'Portfolio Value',
+          data: [],
+          borderColor: '#59b2ff',
+          backgroundColor: 'rgba(89, 178, 255, 0.18)',
+          borderWidth: 3,
+          fill: true,
+          cubicInterpolationMode: 'monotone',
+          pointRadius: 0,
+          pointHoverRadius: 5,
+          tension: 0.3
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: {
+          intersect: false,
+          mode: 'index'
+        },
+        plugins: {
+          legend: {
+            display: false
+          },
+          tooltip: {
+            backgroundColor: 'rgba(7, 17, 31, 0.95)',
+            borderColor: 'rgba(124, 196, 255, 0.25)',
+            borderWidth: 1,
+            titleColor: '#eaf3ff',
+            bodyColor: '#eaf3ff',
+            displayColors: false,
+            callbacks: {
+              label: (context) => `Value: ${formatter.format(context.parsed.y)}`
+            }
+          }
+        },
+        scales: {
+          x: {
+            ticks: {
+              color: '#a8bdd8'
+            },
+            grid: {
+              color: 'rgba(146, 185, 255, 0.08)'
+            }
+          },
+          y: {
+            ticks: {
+              color: '#a8bdd8',
+              callback: (value) => formatter.format(value)
+            },
+            grid: {
+              color: 'rgba(146, 185, 255, 0.08)'
+            }
+          }
+        }
+      }
+    });
+
+    function setPreset(mode, rate) {
+      activeMode = mode;
+
+      if (typeof rate === 'number') {
+        syncPair(elements.rateOfReturn, elements.rateOfReturnInput, rate);
+      }
+
+      elements.presetButtons.forEach((button) => {
+        const isActive = button.dataset.mode === activeMode;
+        button.classList.toggle('active', isActive);
+        button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+      });
+
+      updateCalculator();
+    }
+
+    function getState() {
+      const initialInvestment = clamp(parseValue(elements.initialInvestment, 0), 0, 100000);
+      const monthlyContribution = clamp(parseValue(elements.monthlyContribution, 0), 0, 5000);
+      const investmentPeriod = clamp(parseValue(elements.investmentPeriod, 1), 1, 40);
+      const rateOfReturn = clamp(parseValue(elements.rateOfReturn, 0), 0, 15);
+
+      syncPair(elements.initialInvestment, elements.initialInvestmentInput, initialInvestment);
+      syncPair(elements.monthlyContribution, elements.monthlyContributionInput, monthlyContribution);
+      syncPair(elements.investmentPeriod, elements.investmentPeriodInput, investmentPeriod);
+      syncPair(elements.rateOfReturn, elements.rateOfReturnInput, rateOfReturn);
+
+      return {
+        initialInvestment,
+        monthlyContribution,
+        investmentPeriod,
+        rateOfReturn
+      };
+    }
+
+    function updateCalculator() {
+      const state = getState();
+      const totalAmount = futureValue(
+        state.initialInvestment,
+        state.monthlyContribution,
+        state.rateOfReturn,
+        state.investmentPeriod
+      );
+      const totalInvested = state.initialInvestment + (state.monthlyContribution * 12 * state.investmentPeriod);
+      const totalInterest = totalAmount - totalInvested;
+      const projection = buildProjection(
+        state.initialInvestment,
+        state.monthlyContribution,
+        state.rateOfReturn,
+        state.investmentPeriod
+      );
+
+      elements.totalAmount.textContent = formatter.format(totalAmount);
+      elements.totalInvested.textContent = formatter.format(totalInvested);
+      elements.totalInterest.textContent = formatter.format(totalInterest);
+      elements.chartCaption.textContent = `Using a ${state.rateOfReturn.toFixed(2)}% annual rate with monthly compounding.`;
+
+      chart.data.labels = projection.labels;
+      chart.data.datasets[0].data = projection.values.map((value) => Math.round(value));
+      chart.update();
+    }
+
+    [
+      ['initialInvestment', 'initialInvestmentInput'],
+      ['monthlyContribution', 'monthlyContributionInput'],
+      ['investmentPeriod', 'investmentPeriodInput'],
+      ['rateOfReturn', 'rateOfReturnInput']
+    ].forEach(([sliderKey, inputKey]) => {
+      const slider = elements[sliderKey];
+      const input = elements[inputKey];
+
+      slider.addEventListener('input', () => {
+        input.value = slider.value;
+        if (sliderKey === 'rateOfReturn') {
+          activeMode = 'custom';
+          elements.presetButtons.forEach((button) => {
+            const isActive = button.dataset.mode === 'custom';
+            button.classList.toggle('active', isActive);
+            button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+          });
+        }
+        updateCalculator();
+      });
+
+      input.addEventListener('input', () => {
+        slider.value = input.value;
+        if (inputKey === 'rateOfReturnInput') {
+          activeMode = 'custom';
+          elements.presetButtons.forEach((button) => {
+            const isActive = button.dataset.mode === 'custom';
+            button.classList.toggle('active', isActive);
+            button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+          });
+        }
+        updateCalculator();
+      });
+    });
+
+    elements.presetButtons.forEach((button) => {
+      button.addEventListener('click', () => {
+        const mode = button.dataset.mode;
+        const rate = button.dataset.rate ? parseFloat(button.dataset.rate) : parseValue(elements.rateOfReturn, 0);
+        setPreset(mode, rate);
+      });
+    });
+
+    updateCalculator();
+  </script>
+</body>
+</html>

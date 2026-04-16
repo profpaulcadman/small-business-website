@@ -1,0 +1,22 @@
+{
+  "source": {
+    "type": "yahoo",
+    "path": "",
+    "date_column": "Date",
+    "returns_column": null,
+    "price_column": null,
+    "date_format": null,
+    "ticker": "^FTSC",
+    "interval": "1mo",
+    "auto_adjust": false
+  },
+  "model": {
+    "ar_lags": 4,
+    "rolling_window": 12,
+    "ewma_lambda": 0.94
+  },
+  "site": {
+    "chart_title": "FTSE SmallCap uncertainty from forecast error volatility",
+    "threshold": 1.65
+  }
+}

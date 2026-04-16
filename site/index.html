@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FTSE SmallCap Uncertainty Index</title>
+  <style>
+    :root {
+      --bg: #f4efe7;
+      --panel: rgba(255, 250, 242, 0.92);
+      --ink: #1f1d1a;
+      --muted: #625b52;
+      --accent: #9a3412;
+      --accent-2: #0f766e;
+      --line: rgba(31, 29, 26, 0.1);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Georgia, "Times New Roman", serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top left, rgba(154, 52, 18, 0.15), transparent 30%),
+        radial-gradient(circle at right, rgba(15, 118, 110, 0.14), transparent 25%),
+        linear-gradient(180deg, #f8f2e8 0%, var(--bg) 60%, #ece2d4 100%);
+      min-height: 100vh;
+    }
+
+    .shell {
+      width: min(1120px, calc(100% - 2rem));
+      margin: 0 auto;
+      padding: 2rem 0 3rem;
+    }
+
+    .hero {
+      padding: 1.5rem 0 1rem;
+    }
+
+    h1 {
+      margin: 0 0 0.75rem;
+      font-size: clamp(2rem, 5vw, 4rem);
+      line-height: 0.95;
+      letter-spacing: -0.04em;
+      max-width: 10ch;
+    }
+
+    .lede {
+      max-width: 58rem;
+      margin: 0;
+      color: var(--muted);
+      font-size: 1.08rem;
+      line-height: 1.7;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 1rem;
+      margin-top: 1.5rem;
+    }
+
+    .card {
+      grid-column: span 12;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      padding: 1.25rem;
+      box-shadow: 0 16px 40px rgba(68, 52, 39, 0.08);
+      backdrop-filter: blur(8px);
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1rem;
+    }
+
+    .stat {
+      border-radius: 18px;
+      padding: 1rem;
+      background: rgba(255, 255, 255, 0.55);
+      border: 1px solid rgba(31, 29, 26, 0.08);
+    }
+
+    .label {
+      display: block;
+      font-size: 0.8rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 0.45rem;
+    }
+
+    .value {
+      font-size: clamp(1.4rem, 3vw, 2.2rem);
+      line-height: 1;
+    }
+
+    .chart-wrap {
+      position: relative;
+      min-height: 400px;
+    }
+
+    canvas {
+      width: 100%;
+      height: 400px;
+    }
+
+    .foot {
+      color: var(--muted);
+      font-size: 0.95rem;
+      line-height: 1.7;
+    }
+
+    .foot code {
+      color: var(--ink);
+      font-size: 0.95em;
+    }
+
+    @media (max-width: 760px) {
+      .stats {
+        grid-template-columns: 1fr;
+      }
+
+      .shell {
+        width: min(100% - 1rem, 1120px);
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <h1>FTSE SmallCap Uncertainty Index</h1>
+      <p class="lede">
+        This page is rebuilt from a Python pipeline that estimates forecast-error volatility from FTSE SmallCap monthly returns.
+        It can be hosted as a static site and refreshed automatically each month after the underlying dataset is updated.
+      </p>
+    </section>
+
+    <section class="grid">
+      <article class="card">
+        <div class="stats">
+          <div class="stat">
+            <span class="label">Latest Observation</span>
+            <div class="value" id="latest-date">Loading...</div>
+          </div>
+          <div class="stat">
+            <span class="label">Rolling Z Score</span>
+            <div class="value" id="latest-roll">--</div>
+          </div>
+          <div class="stat">
+            <span class="label">EWMA Z Score</span>
+            <div class="value" id="latest-ewma">--</div>
+          </div>
+        </div>
+      </article>
+
+      <article class="card">
+        <div class="chart-wrap">
+          <canvas id="uncertainty-chart" aria-label="Uncertainty time series chart"></canvas>
+        </div>
+      </article>
+
+      <article class="card foot">
+        <div id="meta">
+          Loading metadata...
+        </div>
+      </article>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+  <script>
+    const numberFormat = new Intl.NumberFormat("en-GB", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+
+    async function loadSeries() {
+      const response = await fetch("./data/index.json", { cache: "no-store" });
+      if (!response.ok) {
+        throw new Error("Could not load generated index data.");
+      }
+
+      return response.json();
+    }
+
+    function renderMeta(payload) {
+      const latestDate = payload.latest?.date || "--";
+      const rolling = payload.latest?.u_rolling_z;
+      const ewma = payload.latest?.u_ewma_z;
+
+      document.getElementById("latest-date").textContent = latestDate;
+      document.getElementById("latest-roll").textContent =
+        rolling == null ? "--" : numberFormat.format(rolling);
+      document.getElementById("latest-ewma").textContent =
+        ewma == null ? "--" : numberFormat.format(ewma);
+
+      document.getElementById("meta").innerHTML = `
+        <strong>${payload.title}</strong><br>
+        Source rows processed: ${payload.source_rows}<br>
+        Last rebuilt: ${new Date(payload.updated_at).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })}<br>
+        Model: AR(${payload.settings.ar_lags}), rolling window ${payload.settings.rolling_window} months, EWMA lambda ${payload.settings.ewma_lambda}
+      `;
+    }
+
+    function renderChart(payload) {
+      const labels = payload.series.map(point => point.date);
+      const rolling = payload.series.map(point => point.u_rolling_z);
+      const ewma = payload.series.map(point => point.u_ewma_z);
+      const threshold = payload.series.map(() => payload.settings.threshold);
+
+      const ctx = document.getElementById("uncertainty-chart");
+      new Chart(ctx, {
+        type: "line",
+        data: {
+          labels,
+          datasets: [
+            {
+              label: "Rolling window",
+              data: rolling,
+              borderColor: "#9a3412",
+              backgroundColor: "rgba(154, 52, 18, 0.08)",
+              borderWidth: 2,
+              pointRadius: 0,
+              tension: 0.18
+            },
+            {
+              label: "EWMA",
+              data: ewma,
+              borderColor: "#0f766e",
+              backgroundColor: "rgba(15, 118, 110, 0.08)",
+              borderWidth: 2,
+              pointRadius: 0,
+              tension: 0.18
+            },
+            {
+              label: "Threshold",
+              data: threshold,
+              borderColor: "#1f1d1a",
+              borderDash: [5, 5],
+              borderWidth: 1.2,
+              pointRadius: 0
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: {
+            mode: "index",
+            intersect: false
+          },
+          plugins: {
+            legend: {
+              position: "bottom"
+            }
+          },
+          scales: {
+            x: {
+              ticks: {
+                maxTicksLimit: 8
+              },
+              grid: {
+                display: false
+              }
+            },
+            y: {
+              title: {
+                display: true,
+                text: "Standardized uncertainty"
+              }
+            }
+          }
+        }
+      });
+    }
+
+    loadSeries()
+      .then(payload => {
+        renderMeta(payload);
+        renderChart(payload);
+      })
+      .catch(error => {
+        document.getElementById("meta").textContent = error.message;
+      });
+  </script>
+</body>
+</html>
