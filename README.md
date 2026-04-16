@@ -65,11 +65,3 @@ For a live CSV feed instead of Yahoo, update `config.json` like this:
 
 If your provider gives index levels instead of returns, set `returns_column` to `null` and populate `price_column`. The script will calculate percentage returns automatically.
 
-## Hosting options
-
-- GitHub Pages: easiest if you want the monthly workflow and hosting in one place
-- Netlify or Cloudflare Pages: good if you prefer static hosting and want to trigger builds another way
-
-## Important assumption
-
-This scaffold ships with sample monthly returns so it runs immediately. To make the published site genuinely automatic, you still need a reliable external source for FTSE SmallCap prices or returns.
